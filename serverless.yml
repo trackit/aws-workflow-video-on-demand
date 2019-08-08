@@ -1,0 +1,560 @@
+service: vod-workflow
+
+plugins:
+ - serverless-plugin-existing-s3
+
+provider:
+  name: aws
+  runtime: python2.7
+  deploymentBucket: ${file(./config.json):deployment.bucket}
+  region: ${file(./config.json):deployment.region}
+  stage: ${opt:stage, 'dev'}
+  timeout: 60
+  role: LambdaAPIRole
+
+resources:
+  Resources:
+    InputBucket:
+      Type: "AWS::S3::Bucket"
+      Properties:
+        BucketName: ${file(./config.json):videos.inputBucket}
+    InputBucketPolicy:
+      Type: "AWS::S3::BucketPolicy"
+      Properties:
+        Bucket:
+          Ref: InputBucket
+        PolicyDocument:
+          Statement:
+            -
+              Action:
+                - "s3:GetObject"
+                - "s3:PutObject"
+              Effect: "Allow"
+              Resource:
+                Fn::Join:
+                  - ""
+                  -
+                    - "arn:aws:s3:::"
+                    -
+                      Ref: InputBucket
+                    - "/*"
+              Principal:
+                AWS: !GetAtt LambdaAPIRole.Arn
+            -
+              Action: "s3:GetObject"
+              Effect: "Allow"
+              Resource:
+                Fn::Join:
+                  - ""
+                  -
+                    - "arn:aws:s3:::"
+                    -
+                      Ref: InputBucket
+                    - "/*"
+              Principal:
+                AWS: !GetAtt LambdaJobRole.Arn
+    OutputBucket:
+      Type: "AWS::S3::Bucket"
+      Properties:
+        BucketName: ${file(./config.json):videos.outputBucket}
+        CorsConfiguration:
+          CorsRules:
+            - AllowedHeaders: ['*']
+              AllowedMethods: [HEAD, GET, POST, PUT]
+              AllowedOrigins: ['*']
+              ExposedHeaders: [x-amz-server-side-encryption, x-amz-request-id, x-amz-id-2]
+              MaxAge: '3600'
+    OutputBucketPolicy:
+      Type: "AWS::S3::BucketPolicy"
+      Properties:
+        Bucket:
+          Ref: OutputBucket
+        PolicyDocument:
+          Statement:
+            -
+              Action: "s3:GetObject"
+              Effect: "Allow"
+              Resource:
+                Fn::Join:
+                  - ""
+                  -
+                    - "arn:aws:s3:::"
+                    -
+                      Ref: OutputBucket
+                    - "/*"
+              Principal:
+                AWS:
+                  - !GetAtt LambdaAPIRole.Arn
+                  - !GetAtt LambdaJobRole.Arn
+                CanonicalUser: !GetAtt CloudFrontOriginAccessIdentity.S3CanonicalUserId
+            -
+              Action: "s3:PutObject"
+              Effect: "Allow"
+              Resource:
+                Fn::Join:
+                  - ""
+                  -
+                    - "arn:aws:s3:::"
+                    -
+                      Ref: OutputBucket
+                    - "/*"
+              Principal:
+                AWS: !GetAtt LambdaJobRole.Arn
+            -
+              Action: "s3:ListBucket"
+              Effect: "Allow"
+              Resource:
+                -
+                  Fn::Join:
+                    - ""
+                    -
+                      - "arn:aws:s3:::"
+                      -
+                        Ref: OutputBucket
+                -
+                  Fn::Join:
+                    - ""
+                    -
+                      - "arn:aws:s3:::"
+                      -
+                        Ref: OutputBucket
+                      - "/*"
+              Principal:
+                AWS: !GetAtt LambdaAPIRole.Arn
+    CloudFrontDistribution:
+      Type: AWS::CloudFront::Distribution
+      Properties:
+        DistributionConfig:
+          Enabled: true
+          DefaultCacheBehavior:
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+            TargetOriginId: !Ref OutputBucket
+            ViewerProtocolPolicy: allow-all
+            ForwardedValues:
+              QueryString: 'false'
+              Cookies:
+                Forward: all
+          CacheBehaviors:
+            -
+              AllowedMethods:
+                - GET
+                - HEAD
+                - OPTIONS
+              TargetOriginId: !Ref OutputBucket
+              PathPattern: "*.mp4"
+              ViewerProtocolPolicy: allow-all
+              ForwardedValues:
+                QueryString: 'false'
+                Cookies:
+                  Forward: all
+              TrustedSigners:
+                - self
+            -
+              AllowedMethods:
+                - GET
+                - HEAD
+                - OPTIONS
+              TargetOriginId: !Ref OutputBucket
+              PathPattern: "*.m3u8"
+              ViewerProtocolPolicy: allow-all
+              ForwardedValues:
+                QueryString: 'false'
+                Cookies:
+                  Forward: all
+              TrustedSigners:
+                - self
+            -
+              AllowedMethods:
+                - GET
+                - HEAD
+                - OPTIONS
+              TargetOriginId: !Ref OutputBucket
+              PathPattern: "*.jpg"
+              ViewerProtocolPolicy: allow-all
+              ForwardedValues:
+                QueryString: 'false'
+                Cookies:
+                  Forward: all
+              TrustedSigners:
+                - self
+          Origins:
+            - DomainName:
+                Fn::Join:
+                  - ""
+                  -
+                    -
+                      Ref: OutputBucket
+                    - ".s3.amazonaws.com"
+              Id: !Ref OutputBucket
+              S3OriginConfig:
+                OriginAccessIdentity:
+                  Fn::Join:
+                    - ""
+                    -
+                      - "origin-access-identity/cloudfront/"
+                      -
+                        Ref: CloudFrontOriginAccessIdentity
+    CloudFrontOriginAccessIdentity:
+      Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+      Properties:
+        CloudFrontOriginAccessIdentityConfig:
+          Comment: !Sub 'CloudFront OAI for VOD Workflow'
+    VideosDynamoTable:
+      Type: "AWS::DynamoDB::Table"
+      Properties:
+        TableName: ${file(./config.json):videos.dynamodbTable}
+        AttributeDefinitions:
+          -
+            AttributeName: "id"
+            AttributeType: "S"
+        KeySchema:
+          -
+            AttributeName: "id"
+            KeyType: "HASH"
+        ProvisionedThroughput:
+          ReadCapacityUnits: "5"
+          WriteCapacityUnits: "5"
+    LambdaAPIRole:
+      Type: "AWS::IAM::Role"
+      Properties:
+        RoleName: ${file(./config.json):videos.roles.lambdaAPIRole}
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            -
+              Effect: "Allow"
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        Path: "/"
+        Policies:
+          -
+            PolicyName: ${file(./config.json):videos.policies.lambdaAPIPolicy}
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                -
+                  Effect: "Allow"
+                  Action:
+                    - lambda:ListFunctions
+                    - lambda:InvokeFunction
+                    - lambda:GetFunction
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                  Resource: "*"
+                -
+                  Effect: "Allow"
+                  Action:
+                    - s3:GetObject
+                    - s3:ListBucket
+                  Resource:
+                    -
+                      Fn::Join:
+                        - ""
+                        -
+                          - "arn:aws:s3:::"
+                          -
+                            Ref: OutputBucket
+                    -
+                      Fn::Join:
+                        - ""
+                        -
+                          - "arn:aws:s3:::"
+                          -
+                            Ref: OutputBucket
+                          - "/*"
+                -
+                  Effect: "Allow"
+                  Action:
+                    - s3:DeleteObject
+                    - s3:PutObjectTagging
+                  Resource:
+                    -
+                      Fn::Join:
+                        - ""
+                        -
+                          - "arn:aws:s3:::"
+                          -
+                            Ref: OutputBucket
+                          - "/*"
+                    -
+                      Fn::Join:
+                        - ""
+                        -
+                          - "arn:aws:s3:::"
+                          -
+                            Ref: InputBucket
+                          - "/*"
+                -
+                  Effect: "Allow"
+                  Action:
+                    - dynamodb:PutItem
+                    - dynamodb:DeleteItem
+                    - dynamodb:GetItem
+                    - dynamodb:Scan
+                    - dynamodb:Query
+                    - dynamodb:UpdateItem
+                  Resource:
+                    - !GetAtt VideosDynamoTable.Arn
+                    - !GetAtt OutputBucket.Arn
+    LambdaJobRole:
+      Type: "AWS::IAM::Role"
+      Properties:
+        RoleName: ${file(./config.json):videos.roles.lambdaJobRole}
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            -
+              Effect: "Allow"
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        Path: "/"
+        Policies:
+          -
+            PolicyName: ${file(./config.json):videos.policies.lambdaJobPolicy}
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                -
+                  Effect: "Allow"
+                  Action:
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                    - mediaconvert:*
+                    - iam:ListRoles
+                  Resource: "*"
+                -
+                  Effect: "Allow"
+                  Action:
+                    - s3:PutObject
+                    - s3:GetObject
+                  Resource:
+                    -
+                      Fn::Join:
+                        - ""
+                        -
+                          - "arn:aws:s3:::"
+                          -
+                            Ref: InputBucket
+                          - "/*"
+                    -
+                      Fn::Join:
+                        - ""
+                        -
+                          - "arn:aws:s3:::"
+                          -
+                            Ref: OutputBucket
+                          - "/*"
+                -
+                  Effect: "Allow"
+                  Action:
+                    - iam:PassRole
+                    - s3:GetBucketNotification
+                    - s3:PutBucketNotification
+                    - dynamodb:PutItem
+                    - dynamodb:DeleteItem
+                    - dynamodb:GetItem
+                    - dynamodb:Scan
+                    - dynamodb:Query
+                    - dynamodb:UpdateItem
+                  Resource:
+                    - !GetAtt MediaConvertRole.Arn
+                    - !GetAtt InputBucket.Arn
+                    - !GetAtt OutputBucket.Arn
+                    - !GetAtt VideosDynamoTable.Arn
+    MediaConvertRole:
+      Type: "AWS::IAM::Role"
+      Properties:
+        RoleName: ${file(./config.json):videos.roles.mediaConvertRole}
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            -
+              Effect: "Allow"
+              Principal:
+                Service:
+                  - mediaconvert.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        Path: "/"
+        Policies:
+          -
+            PolicyName: ${file(./config.json):videos.policies.mediaConvertPolicy}
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                -
+                  Effect: "Allow"
+                  Action: mediaconvert:*
+                  Resource: "*"
+                -
+                  Effect: "Allow"
+                  Action:
+                    - s3:PutObject
+                    - s3:GetObject
+                  Resource:
+                    - !GetAtt InputBucket.Arn
+                    - !GetAtt OutputBucket.Arn
+                    -
+                      Fn::Join:
+                        - ""
+                        -
+                          - "arn:aws:s3:::"
+                          -
+                            Ref: InputBucket
+                          - "/*"
+                    -
+                      Fn::Join:
+                        - ""
+                        -
+                          - "arn:aws:s3:::"
+                          -
+                            Ref: OutputBucket
+                          - "/*"
+    CognitoUserPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        UserPoolName: ${file(./config.json):videos.cognito.usersPool}
+        AutoVerifiedAttributes:
+          - "email"
+        UsernameAttributes:
+          - "email"
+        Schema:
+          -
+            Name: email
+            AttributeDataType: String
+            Mutable: false
+            Required: true
+    CognitoUserPoolClient:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        UserPoolId: !Ref CognitoUserPool
+    CognitoAdminPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        UserPoolName: ${file(./config.json):videos.cognito.adminsPool}
+        AutoVerifiedAttributes:
+          - "email"
+        UsernameAttributes:
+          - "email"
+        Schema:
+          -
+            Name: email
+            AttributeDataType: String
+            Mutable: false
+            Required: true
+    CognitoAdminPoolClient:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        UserPoolId: !Ref CognitoAdminPool
+    ApiGatewayAuthorizerAdmin:
+      DependsOn:
+        - ApiGatewayRestApi
+      Type: AWS::ApiGateway::Authorizer
+      Properties:
+        Name: cognito-authorizer-admin
+        IdentitySource: method.request.header.Authorization
+        RestApiId:
+          Ref: ApiGatewayRestApi
+        Type: COGNITO_USER_POOLS
+        ProviderARNs:
+          - !Ref CognitoAdminPool
+    ApiGatewayAuthorizerUsers:
+      DependsOn:
+        - ApiGatewayRestApi
+      Type: AWS::ApiGateway::Authorizer
+      Properties:
+        Name: cognito-authorizer-users
+        IdentitySource: method.request.header.Authorization
+        RestApiId:
+          Ref: ApiGatewayRestApi
+        Type: COGNITO_USER_POOLS
+        ProviderARNs:
+          - !Ref CognitoUserPool
+          - !Ref CognitoAdminPool
+
+functions:
+  convert_video:
+    handler: mediaconvert.convert_video
+    events:
+     - existingS3:
+         bucket: ${file(./config.json):videos.inputBucket}
+         events:
+          - s3:ObjectCreated:*
+    role: LambdaJobRole
+  update_video_status:
+    handler: mediaconvert.update_video_status
+    events:
+     - cloudwatchEvent:
+         event:
+           source:
+             - 'aws.mediaconvert'
+           detail-type:
+             - 'MediaConvert Job State Change'
+    role: LambdaJobRole
+  get_videos:
+    handler: api.get_videos
+    events:
+     - http:
+         path: videos
+         method: get
+         cors: true
+         authorizer:
+           type: COGNITO_USER_POOLS
+           authorizerId:
+             Ref: ApiGatewayAuthorizerUsers
+  get_video:
+    handler: api.get_video
+    events:
+     - http:
+         path: videos/{id}
+         method: get
+         cors: true
+         authorizer:
+           type: COGNITO_USER_POOLS
+           authorizerId:
+             Ref: ApiGatewayAuthorizerUsers
+  upload_video:
+    handler: api.upload_video
+    events:
+     - http:
+         path: videos
+         method: post
+         cors: true
+         authorizer:
+           type: COGNITO_USER_POOLS
+           authorizerId:
+             Ref: ApiGatewayAuthorizerAdmin
+  edit_video:
+    handler: api.edit_video
+    events:
+     - http:
+         path: videos/{id}
+         method: post
+         cors: true
+         authorizer:
+           type: COGNITO_USER_POOLS
+           authorizerId:
+             Ref: ApiGatewayAuthorizerAdmin
+  delete_video:
+    handler: api.delete_video
+    events:
+     - http:
+         path: videos/{id}
+         method: delete
+         cors: true
+         authorizer:
+           type: COGNITO_USER_POOLS
+           authorizerId:
+             Ref: ApiGatewayAuthorizerAdmin
+  generate_cloudfront_presigned_urls:
+    runtime: nodejs10.x
+    handler: cloudfront.generate

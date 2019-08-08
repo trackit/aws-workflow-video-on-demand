@@ -1,0 +1,31 @@
+{
+    "deployment": {
+        "bucket": "vod-workflow-serverless-dev",
+        "region": "us-west-2"
+    },
+    "videos": {
+        "inputBucket": "vod-workflow-content-input",
+        "outputBucket": "vod-workflow-content-output",
+        "dynamodbTable": "vod-workflow-content",
+        "roles": {
+            "lambdaAPIRole": "vod-workflow-lambda-api-role",
+            "lambdaJobRole": "vod-workflow-lambda-job-role",
+            "mediaConvertRole": "vod-workflow-mediaconvert-job-role"
+        },
+        "policies": {
+            "lambdaAPIPolicy": "vod-workflow-lambda-api-policy",
+            "lambdaJobPolicy": "vod-workflow-lambda-job-policy",
+            "mediaConvertPolicy": "vod-workflow-mediaconvert-job-policy"
+        },
+        "distribution": {
+            "baseUrl": "https://mydistribution.cloudfront.net/",
+            "keyPairId": "KEY_PAIR_ID",
+            "privateKey": "-----BEGIN RSA PRIVATE KEY-----\nPRIVATE_KEY\n-----END RSA PRIVATE KEY-----\n"
+        },
+        "cognito": {
+            "usersPool": "vod-workflow-user-pool-users",
+            "adminsPool": "vod-workflow-user-pool-admins"
+        }
+    }
+}
+s

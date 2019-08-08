@@ -1,0 +1,11 @@
+{
+  "name": "vod-workflow",
+  "version": "1.0.0",
+  "dependencies": {
+    "aws-cloudfront-sign": "~2.2.0",
+    "serverless-plugin-existing-s3": "~2.4.0"
+  },
+  "devDependencies": {
+    "serverless": "~1.49.0"
+  }
+}

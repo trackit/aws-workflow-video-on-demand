@@ -1,0 +1,14 @@
+# Serverless
+.serverless/
+
+# NPM
+node_modules/
+
+# Python
+*.pyc
+
+# Development
+tmp
+*.tmp
+.vscode/
+.idea/
