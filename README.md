@@ -9,6 +9,15 @@ Once a file is uploaded to this bucket, a Lambda function will be triggered and 
 The transcoded video will then be stored into an output bucket.
 API Gateway will let you make API requests to get the list of transcoded videos available in the output bucket.
 
+Features:
+1. API to perform CRUD operations on the content
+2. S3 tagging
+3. Cognito integration
+4. Metadata stored in DynamoDB
+5. Easy configuration
+6. Easy install - one command to deploy the full stack and the s3 triggers
+7. m3u8 support
+
 ## Infrastructure
 
 ![Infrastructure schema](.documentation/infrastructure.png)
@@ -106,3 +115,5 @@ Two Cognito users pools are used:
 ## Roadmap
 
 - Get CloudFront distribution automatically
+- AWS Step Functions option for easy interface for operators
+- Feel free to send your suggestions at support@trackit.io
