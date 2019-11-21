@@ -105,7 +105,7 @@ Example: (`POST /videos` with previous body)
 
 You can now post your video on AWS Mediaconvert with the following request:
 
-`curl -v --upload-file your_video.mp4 "$URL"`
+`curl -v --upload-file your_video.mp4 "$UPLOAD_URL"`
 
 ### POST /videos/:id
 
