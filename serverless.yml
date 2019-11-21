@@ -1,5 +1,7 @@
 service: vod-workflow
 
+org: trackit
+
 plugins:
  - serverless-plugin-existing-s3
 
@@ -466,7 +468,7 @@ resources:
           Ref: ApiGatewayRestApi
         Type: COGNITO_USER_POOLS
         ProviderARNs:
-          - !Ref CognitoAdminPool
+          - !GetAtt CognitoAdminPool.Arn
     ApiGatewayAuthorizerUsers:
       DependsOn:
         - ApiGatewayRestApi
@@ -478,8 +480,8 @@ resources:
           Ref: ApiGatewayRestApi
         Type: COGNITO_USER_POOLS
         ProviderARNs:
-          - !Ref CognitoUserPool
-          - !Ref CognitoAdminPool
+          - !GetAtt CognitoUserPool.Arn
+          - !GetAtt CognitoAdminPool.Arn
 
 functions:
   convert_video:
