@@ -12,6 +12,8 @@ Two Cognito users pools are used:
 
 A token needs to be generated and added in requests headers (`Authorization: $token`)
 
+Note: You will need to enable authentication in AWS Console: Cognito -> User Pool -> Your User Pool --> App Clients and click on `Show details` and click on `Enable username password auth for admin APIs for authentication (ALLOW_ADMIN_USER_PASSWORD_AUTH)` and Save app client changes.
+
 You can generate a token using AWS CLI tool:
 
 ````sh
@@ -100,6 +102,10 @@ Example: (`POST /videos` with previous body)
 	"upload_url": "$UPLOAD_URL"
 }
 ````
+
+You can now post your video on AWS Mediaconvert with the following request:
+
+`curl -v --upload-file your_video.mp4 "$URL"`
 
 ### POST /videos/:id
 
