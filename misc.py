@@ -34,14 +34,20 @@ def format_tags(tags):
     return []
 
 def get_mediaconvert_role():
+    def findRole(role, roles):
+        for item in roles:
+            if role == item['RoleName']:
+                return item['Arn']
+        return None
     try:
         client = boto3.client('iam')
         roleName = get_config("videos", "roles", "mediaConvertRole")
         roles = client.list_roles()
-        for role in roles['Roles']:
-            if roleName in role['Arn']:
-                return role['Arn']
-        return None
+        result = findRole(roleName, roles['Roles'])
+        while result == None and roles['IsTruncated']:
+            roles = client.list_roles(Marker=roles['Marker'])
+            result = findRole(roleName, roles['Roles'])
+        return result
     except Exception as ex:
         print(ex)
         return None
