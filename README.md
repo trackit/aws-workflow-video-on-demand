@@ -54,6 +54,8 @@ A bucket will be needed for Serverless framework. This bucket will be used to st
 
 The other buckets will be created during deployment.
 
+Then, you can create an S3 Bucket (in the same region where you want to deploy your API), you can call it `vod-workflow-serverless-dev` for example.
+
 #### CloudFront Key Pair
 
 A CloudFront key pair is needed for the presigned URLs generation. Instructions are available [here](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-trusted-signers.html#private-content-creating-cloudfront-key-pairs).
@@ -76,7 +78,7 @@ A configuration file named `config.json` is available to customize this workflow
 
 #### Deployment
 
-You need to set as deployment bucket the name of the bucket created above, so Serverless can push content to this bucket for deployment. Also, you can change the region you want to deploy this workflow.
+You need to set as deployment bucket the name of the bucket created above (`vod-workflow-serverless-dev`), so Serverless can push content to this bucket for deployment. Also, you can change the region you want to deploy this workflow.
 
 #### Distribution
 
