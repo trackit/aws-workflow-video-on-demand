@@ -78,7 +78,7 @@ A configuration file named `config.json` is available to customize this workflow
 
 #### Deployment
 
-You need to set as deployment bucket the name of the bucket created above, so Serverless can push content to this bucket for deployment. Also, you can change the region you want to deploy this workflow.
+You need to set as deployment bucket the name of the bucket created above (`vod-workflow-serverless-dev`), so Serverless can push content to this bucket for deployment. Also, you can change the region you want to deploy this workflow.
 
 #### Distribution
 
