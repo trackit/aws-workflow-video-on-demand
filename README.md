@@ -2,6 +2,8 @@
 
 A Terraform module which set a workflow in order to transcode videos put in an input bucket to an output bucket on AWS (using AWS Elemental MediaConvert).
 
+![Infrastructure schema](./.documentation/infrastructure.png)
+
 The supported resources types are the same as AWS Elemental MediaConvert:
 
 ## Terraform versions
