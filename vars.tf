@@ -4,35 +4,35 @@ variable "region" {
 }
 
 variable "input_bucket_name" {
-    description = "Input bucket name which contains videos before transcoding."
-    default = ""
+    description = "Input bucket name which contains videos to be transcoded."
+    default = "my_input_bucket_name"
     type = string
 }
 
 variable "output_bucket_name" {
     description = "Output bucket name which contains videos after transcoding."
-    default = ""
+    default = "my_output_bucket_name"
     type = string
 }
 
 variable "bucket_event_prefix" {
     description = "Element prefix to trigger lambda function."
-    default = ""
+    default = "input/"
 }
 
 variable "bucket_event_suffix" {
     description = "Element suffix to trigger lambda function."
-    default = ".mp4"
+    default = ".mov"
 }
 
 variable "project_base_name" {
     description = "Project name."
-    default = "workflow-transcoding"
+    default = "my_workflow_vod_name"
 }
 
 variable "lambda_zip_path" {
     description = "Path to lambda function and configuration zip."
-    default = "./mediaconvert_lambda.zip"
+    default = "./aws-workflow-video-on-demand/mediaconvert_lambda.zip"
 }
 
 variable "speke_server_url" {
@@ -47,4 +47,5 @@ variable "speke_system_id" {
 
 variable "mediaconvert_endpoint" {
     description = "AWS Element MediaConvert API endpoint."
+    default = "https://abcd1234.mediaconvert.us-west-2.amazonaws.com"
 }
