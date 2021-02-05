@@ -97,7 +97,7 @@ What does it do ?
 # vars.tf
 /*
 // module configuration variables
-//  - By changing default values and using module
+//  - By overriding default values provided by the module
 */
 
 variable "region" {
