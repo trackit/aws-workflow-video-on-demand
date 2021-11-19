@@ -16,7 +16,7 @@ resource "aws_lambda_function" "this" {
   filename         = var.lambda_zip_path
   function_name    = "${var.project_base_name}-lambda"
   role             = aws_iam_role.lambda_job.arn
-  handler          = "mediaconvert.convert_video"
+  handler          = "mediaconvert_lambda/mediaconvert.convert_video"
   source_code_hash = filebase64sha256(var.lambda_zip_path)
   runtime          = "python3.8"
   timeout          = 60

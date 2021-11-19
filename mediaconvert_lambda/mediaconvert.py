@@ -32,7 +32,7 @@ def convert_video(event, context):
         client = boto3.client('mediaconvert', region_name=region, endpoint_url=mediaConvertEndpoint, verify=False)
 
         # Job settings are in the lambda zip file in the current working directory
-        with open('job.json') as json_data:
+        with open('mediaconvert_lambda/job.json') as json_data:
             jobSettings = json.load(json_data)
 
         # Update the job settings with the source video from the S3 event and destination
